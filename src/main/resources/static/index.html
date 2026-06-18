@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WalletWise Web Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; background-color: #f4f6f9; }
+        .container { max-width: 700px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        input, select, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
+        button { background-color: #28a745; color: white; border: none; font-size: 16px; cursor: pointer; }
+        button:hover { background-color: #218838; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>WalletWise Web Dashboard</h2>
+    
+    <input type="text" id="desc" placeholder="Description (e.g., Dinner, Salary)">
+    <input type="number" id="amount" placeholder="Amount ($)">
+    <select id="type">
+        <option value="INCOME">INCOME</option>
+        <option value="EXPENSE">EXPENSE</option>
+    </select>
+    <input type="text" id="category" placeholder="Category (e.g., Food, Utilities)">
+    <button onclick="addTransaction()">Submit Transaction</button>
+
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Description</th><th>Amount</th><th>Type</th><th>Category</th></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+   const API_URL = "http://localhost:8080/api/transactions";
+
+// Modified: Added a delete button column inside the table mapping loop
+async function loadTransactions() {
+    const response = await fetch(API_URL);
+    const data = await response.json();
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = "";
+    
+    data.forEach(t => {
+        tbody.innerHTML += `<tr>
+            <td>${t.id}</td>
+            <td>${t.description}</td>
+            <td>$${t.amount.toFixed(2)}</td>
+            <td>${t.type}</td>
+            <td>${t.category}</td>
+            <td>
+                <button onclick="deleteTransaction(${t.id})" style="background-color: #dc3545; padding: 5px 10px; font-size: 12px; margin:0;">Delete</button>
+            </td>
+        </tr>`;
+    });
+}
+
+// NEW: JavaScript function to call our backend HTTP DELETE endpoint
+async function deleteTransaction(id) {
+    if (confirm("Are you sure you want to delete this transaction?")) {
+        const response = await fetch(`${API_URL}/${id}`, {
+            method: "DELETE"
+        });
+
+        if (response.ok) {
+            loadTransactions(); // Reload the visual table grid instantly
+        } else {
+            alert("Failed to delete transaction.");
+        }
+    }
+}
+
+async function addTransaction() {
+    const descInput = document.getElementById("desc").value.trim();
+    const amountInput = parseFloat(document.getElementById("amount").value);
+
+    // Front-end safety validation catch
+    if (!descInput || isNaN(amountInput) || amountInput <= 0) {
+        alert("Please enter a valid description and an amount greater than 0.");
+        return;
+    }
+
+    const payload = {
+        description: descInput,
+        amount: amountInput,
+        type: document.getElementById("type").value,
+        category: document.getElementById("category").value
+    };
+
+    const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+        loadTransactions();
+        document.getElementById("desc").value = "";
+        document.getElementById("amount").value = "";
+        document.getElementById("category").value = "";
+    } else {
+        alert("Server rejected the entry request data.");
+    }
+}
+
+window.onload = loadTransactions;
+</script>
+</body>
+</html>
